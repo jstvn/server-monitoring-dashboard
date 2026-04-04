@@ -1,7 +1,7 @@
 {
   "name": "server-monitoring-dashboard-backend",
   "version": "1.0.0",
-  "description": "Backend for Task Manager App",
+  "description": "Backend for Server Monitoring Dashboard App",
   "main": "server.js",
   "scripts": {
     "test": "mocha",

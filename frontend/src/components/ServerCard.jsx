@@ -139,7 +139,7 @@ const StatBar = ({ label, value, hint, tone = 'cyan', width = '70%', history, re
   );
 };
 
-const ServerCard = ({ server }) => {
+const ServerCard = ({ server, onEdit }) => {
   const formatPercent = (value) => Number(value.toFixed(1));
   const formatStorageValue = (valueInGb) => {
     if (valueInGb >= 100) return `${Math.round(valueInGb)}G`;
@@ -166,9 +166,17 @@ const ServerCard = ({ server }) => {
             <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${statusTone[server.online ? 'online' : 'offline']}`}>
               {server.online ? 'Online' : 'Offline'}
             </span>
+            {server.isPersisted && onEdit ? (
+              <button
+                onClick={() => onEdit(server)}
+                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900"
+              >
+                Edit
+              </button>
+            ) : null}
           </div>
           <div className="mt-2 flex flex-wrap gap-2 text-sm text-slate-500">
-            <span>{server.ip}</span>
+            <span>{server.host}</span>
             <span>•</span>
             <span>Port {server.port}</span>
             <span>•</span>
@@ -211,7 +219,7 @@ const ServerCard = ({ server }) => {
         <div className="ui-card-soft border-slate-200/80 bg-slate-50/80 grid gap-3 p-3.5">
           <div className="ui-card-panel ui-shadow-panel bg-white/90 p-4">
             <div className="ui-text-label-caps">Disk I/O</div>
-            <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{server.diskIo.toFixed(0)} ops/s</div>
+            <div className="mt-2 whitespace-nowrap text-2xl font-semibold tracking-tight text-slate-900">{server.diskIo.toFixed(0)} ops/s</div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/80">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-rose-500"
@@ -242,13 +250,4 @@ const ServerCard = ({ server }) => {
 };
 
 export default ServerCard;
-
-
-
-
-
-
-
-
-
 
