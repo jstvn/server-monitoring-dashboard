@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../axiosConfig';
 
 const Profile = () => {
-  const { user } = useAuth(); // Access user token from context
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,7 +13,6 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Fetch profile data from the backend
     const fetchProfile = async () => {
       setLoading(true);
       try {
@@ -52,42 +51,42 @@ const Profile = () => {
   };
 
   if (loading) {
-    return <div className="text-center mt-20">Loading...</div>;
+    return <div className="mt-20 text-center text-slate-600">Loading...</div>;
   }
 
   return (
-    <div className="max-w-md mx-auto mt-20">
-      <form onSubmit={handleSubmit} className="bg-white p-6 shadow-md rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">Your Profile</h1>
+    <div className="mx-auto mt-20 max-w-md px-4 sm:px-0">
+      <form onSubmit={handleSubmit} className="ui-form-card ui-shadow-soft">
+        <h1 className="mb-5 text-center text-2xl font-semibold tracking-tight text-slate-900">Your Profile</h1>
         <input
           type="text"
           placeholder="Name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          className="ui-input"
         />
         <input
           type="email"
           placeholder="Email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          className="ui-input"
         />
         <input
           type="text"
           placeholder="University"
           value={formData.university}
           onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          className="ui-input"
         />
         <input
           type="text"
           placeholder="Address"
           value={formData.address}
           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          className="w-full mb-4 p-2 border rounded"
+          className="ui-input"
         />
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded">
+        <button type="submit" className="ui-btn-primary">
           {loading ? 'Updating...' : 'Update Profile'}
         </button>
       </form>
