@@ -5,7 +5,6 @@ import Footer from './components/Footer';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
-import Tasks from './pages/Tasks';
 import ServerFormPage from './pages/ServerFormPage';
 import { useAuth } from './context/AuthContext';
 
@@ -25,7 +24,6 @@ function App() {
             <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" replace />} />
             <Route path="/servers/new" element={user ? <ServerFormPage /> : <Navigate to="/login" replace />} />
             <Route path="/servers/:id/edit" element={user ? <ServerFormPage /> : <Navigate to="/login" replace />} />
-            <Route path="/tasks" element={user ? <Tasks /> : <Navigate to="/login" replace />} />
           </Routes>
         </div>
         <Footer />
