@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import OverviewStat from '../components/OverviewStat';
 import ServerCard from '../components/ServerCard';
+import axiosInstance from '../axiosConfig';
+import { useAuth } from '../context/AuthContext';
 
 const serverTemplates = [
-  { id: 'srv-1', name: 'Northwind API', ip: '10.24.8.12', port: 22, sshUser: 'ops' },
-  { id: 'srv-2', name: 'Billing Worker', ip: '10.24.8.18', port: 22, sshUser: 'deploy' },
-  { id: 'srv-3', name: 'Search Cluster', ip: '10.24.9.21', port: 2222, sshUser: 'search' },
-  { id: 'srv-4', name: 'Media Edge', ip: '10.24.9.33', port: 22, sshUser: 'edge' },
-  { id: 'srv-5', name: 'Analytics Node', ip: '10.24.10.14', port: 22, sshUser: 'analytics' },
-  { id: 'srv-6', name: 'Cache Layer', ip: '10.24.10.27', port: 2200, sshUser: 'cache' },
+  { id: 'srv-1', name: 'Northwind API', host: '10.24.8.12', port: 22, sshUser: 'ops' },
+  { id: 'srv-2', name: 'Billing Worker', host: '10.24.8.18', port: 22, sshUser: 'deploy' },
+  { id: 'srv-3', name: 'Search Cluster', host: '10.24.9.21', port: 2222, sshUser: 'search' },
+  { id: 'srv-4', name: 'Media Edge', host: '10.24.9.33', port: 22, sshUser: 'edge' },
+  { id: 'srv-5', name: 'Analytics Node', host: '10.24.10.14', port: 22, sshUser: 'analytics' },
+  { id: 'srv-6', name: 'Cache Layer', host: '10.24.10.27', port: 2200, sshUser: 'cache' },
 ];
 
 const storageProfiles = [
@@ -40,7 +43,7 @@ const buildHistory = (base, min, max, step, points = HISTORY_POINTS) => {
 
 const pushHistory = (history, nextValue) => [...history.slice(1), round(nextValue, 1)];
 
-const createInitialServer = (template, index) => {
+const seedServerWithDummyMetrics = (server, index, isPersisted = false) => {
   const online = Math.random() > 0.22;
   const cpuBase = online ? randomBetween(18, 72) : randomBetween(4, 16);
   const ramBase = online ? randomBetween(25, 78) : randomBetween(6, 22);
@@ -48,8 +51,9 @@ const createInitialServer = (template, index) => {
   const storageProfile = storageProfiles[index % storageProfiles.length];
 
   return {
-    ...template,
+    ...server,
     index,
+    isPersisted,
     online,
     cpu: cpuBase,
     cpuTrend: online ? 'Smooth' : 'Idle',
@@ -74,8 +78,8 @@ const evolveServer = (server) => {
   const online = Math.random() < onlineFlipChance ? !server.online : server.online;
   const cpuBounds = online ? [16, 92, 8] : [4, 22, 4];
   const ramBounds = online ? [18, 88, 7] : [6, 28, 4];
-    const networkUpBounds = online ? [18, 520, 38] : [0, 42, 8];
-    const networkDownBounds = online ? [28, 680, 46] : [0, 48, 8];
+  const networkUpBounds = online ? [18, 520, 38] : [0, 42, 8];
+  const networkDownBounds = online ? [28, 680, 46] : [0, 48, 8];
   const diskIoBounds = online ? [70, 980, 120] : [10, 140, 25];
   const nextCpu = drift(server.cpu, ...cpuBounds);
   const nextRam = drift(server.ram, ...ramBounds);
@@ -102,17 +106,54 @@ const evolveServer = (server) => {
 };
 
 const Dashboard = () => {
-  const [servers, setServers] = useState(() => serverTemplates.map(createInitialServer));
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [demoServers, setDemoServers] = useState(() =>
+    serverTemplates.map((template, index) => seedServerWithDummyMetrics(template, index, false))
+  );
+  const [savedServers, setSavedServers] = useState([]);
   const [lastRefreshed, setLastRefreshed] = useState(Date.now());
 
   useEffect(() => {
+    const fetchSavedServers = async () => {
+      if (!user?.token) return;
+      try {
+        const response = await axiosInstance.get('/api/servers', {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+
+        const enrichedServers = response.data.map((server, index) =>
+          seedServerWithDummyMetrics(
+            {
+              ...server,
+              id: server._id,
+              host: server.host,
+            },
+            index,
+            true
+          )
+        );
+
+        setSavedServers(enrichedServers);
+      } catch (error) {
+        // Keep dashboard usable with demo servers even if API fails.
+      }
+    };
+
+    fetchSavedServers();
+  }, [user?.token]);
+
+  useEffect(() => {
     const intervalId = setInterval(() => {
-      setServers((current) => current.map(evolveServer));
+      setDemoServers((current) => current.map(evolveServer));
+      setSavedServers((current) => current.map(evolveServer));
       setLastRefreshed(Date.now());
     }, 3000);
 
     return () => clearInterval(intervalId);
   }, []);
+
+  const servers = useMemo(() => [...savedServers, ...demoServers], [savedServers, demoServers]);
 
   const totals = useMemo(() => {
     const online = servers.filter((server) => server.online).length;
@@ -120,11 +161,19 @@ const Dashboard = () => {
       total: servers.length,
       online,
       offline: servers.length - online,
-      averageCpu: round(servers.reduce((sum, server) => sum + server.cpu, 0) / servers.length, 1),
+      averageCpu: servers.length ? round(servers.reduce((sum, server) => sum + server.cpu, 0) / servers.length, 1) : 0,
     };
   }, [servers]);
 
   const refreshedText = `${Math.max(1, Math.round((Date.now() - lastRefreshed) / 1000))}s ago`;
+
+  const handleAddServer = () => {
+    navigate('/servers/new');
+  };
+
+  const handleEditServer = (server) => {
+    navigate(`/servers/${server._id}/edit`);
+  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.96),_rgba(226,232,240,0.92)_42%,_rgba(241,245,249,1)_100%)] text-slate-900">
@@ -132,12 +181,8 @@ const Dashboard = () => {
         <section className="ui-card-glass overflow-hidden rounded-[2.5rem] p-6 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="ui-chip-badge">
-                Live operations view
-              </div>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
-                Server Monitoring Dashboard
-              </h1>
+              <div className="ui-chip-badge">Live operations view</div>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">Server Monitoring Dashboard</h1>
               <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
                 Centralized visibility into server health, capacity, and network activity with near real-time refresh across all monitored services.
               </p>
@@ -163,7 +208,7 @@ const Dashboard = () => {
             <OverviewStat
               label="Total servers"
               value={totals.total}
-              detail="All registered server records currently monitored in this workspace."
+              detail="All registered and demo server records currently shown in this dashboard."
               tone="indigo"
             />
             <OverviewStat
@@ -182,19 +227,24 @@ const Dashboard = () => {
         </section>
 
         <section className="mt-8">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Monitored servers</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Compact status cards for CPU, RAM, network throughput, and storage utilization.
               </p>
             </div>
-            <div className="text-sm text-slate-600">Auto-refresh enabled across all server cards</div>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-slate-600">Auto-refresh enabled across all server cards</div>
+              <button onClick={handleAddServer} className="ui-btn-ghost whitespace-nowrap">
+                Add Server
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 grid gap-5 xl:grid-cols-2">
             {servers.map((server) => (
-              <ServerCard key={server.id} server={server} />
+              <ServerCard key={server._id || server.id} server={server} onEdit={handleEditServer} />
             ))}
           </div>
         </section>
