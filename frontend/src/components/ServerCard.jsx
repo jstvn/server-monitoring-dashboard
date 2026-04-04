@@ -139,7 +139,7 @@ const StatBar = ({ label, value, hint, tone = 'cyan', width = '70%', history, re
   );
 };
 
-const ServerCard = ({ server, onEdit }) => {
+const ServerCard = ({ server, onEdit, onDelete }) => {
   const formatPercent = (value) => Number(value.toFixed(1));
   const formatStorageValue = (valueInGb) => {
     if (valueInGb >= 100) return `${Math.round(valueInGb)}G`;
@@ -174,7 +174,15 @@ const ServerCard = ({ server, onEdit }) => {
                 Edit
               </button>
             ) : null}
-          </div>
+            {server.isPersisted && onDelete ? (
+              <button
+                onClick={() => onDelete(server)}
+                className="rounded-full border border-rose-300 bg-white px-3 py-1 text-xs font-medium text-rose-600 transition hover:border-rose-400 hover:bg-rose-50 hover:text-rose-700"
+              >
+                Delete
+              </button>
+            ) : null}
+           </div>
           <div className="mt-2 flex flex-wrap gap-2 text-sm text-slate-500">
             <span>{server.host}</span>
             <span>•</span>
@@ -250,4 +258,6 @@ const ServerCard = ({ server, onEdit }) => {
 };
 
 export default ServerCard;
+
+
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmDialog from '../components/ConfirmDialog';
 import OverviewStat from '../components/OverviewStat';
 import ServerCard from '../components/ServerCard';
 import axiosInstance from '../axiosConfig';
@@ -113,6 +114,9 @@ const Dashboard = () => {
   );
   const [savedServers, setSavedServers] = useState([]);
   const [lastRefreshed, setLastRefreshed] = useState(Date.now());
+  const [serverPendingDelete, setServerPendingDelete] = useState(null);
+  const [isDeletingServer, setIsDeletingServer] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     const fetchSavedServers = async () => {
@@ -173,6 +177,37 @@ const Dashboard = () => {
 
   const handleEditServer = (server) => {
     navigate(`/servers/${server._id}/edit`);
+  };
+
+  const handleDeleteServerRequest = (server) => {
+    setServerPendingDelete(server);
+    setDeleteError('');
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeletingServer) return;
+    setServerPendingDelete(null);
+    setDeleteError('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!serverPendingDelete?._id || !user?.token) return;
+
+    setIsDeletingServer(true);
+    setDeleteError('');
+
+    try {
+      await axiosInstance.delete(`/api/servers/${serverPendingDelete._id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+
+      setSavedServers((current) => current.filter((server) => server._id !== serverPendingDelete._id));
+      setServerPendingDelete(null);
+    } catch (error) {
+      setDeleteError(error?.response?.data?.message || 'Unable to delete server right now.');
+    } finally {
+      setIsDeletingServer(false);
+    }
   };
 
   return (
@@ -244,11 +279,22 @@ const Dashboard = () => {
 
           <div className="mt-6 grid gap-5 xl:grid-cols-2">
             {servers.map((server) => (
-              <ServerCard key={server._id || server.id} server={server} onEdit={handleEditServer} />
+              <ServerCard key={server._id || server.id} server={server} onEdit={handleEditServer} onDelete={handleDeleteServerRequest} />
             ))}
           </div>
         </section>
       </main>
+
+      <ConfirmDialog
+        isOpen={Boolean(serverPendingDelete)}
+        title="Delete server?"
+        description={serverPendingDelete ? `Remove ${serverPendingDelete.name} (${serverPendingDelete.host}) from the dashboard? This action cannot be undone.` : ''}
+        confirmLabel="Delete server"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        isLoading={isDeletingServer}
+        errorMessage={deleteError}
+      />
     </div>
   );
 };

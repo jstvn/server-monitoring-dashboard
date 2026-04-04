@@ -77,5 +77,15 @@ const updateServer = async (req, res) => {
   }
 };
 
-module.exports = { listServers, getServer, createServer, updateServer };
+const deleteServer = async (req, res) => {
+  try {
+    const deletedServer = await Server.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
+    if (!deletedServer) return res.status(404).json({ message: 'Server not found' });
 
+    res.json({ message: 'Server deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { listServers, getServer, createServer, updateServer, deleteServer };
