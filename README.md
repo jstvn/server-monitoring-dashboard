@@ -53,7 +53,7 @@ npm start
 
 The public URL of the deployed project is:
 
-[http://15.135.193.151:3000/](http://15.135.193.151:3000/)
+[http://13.236.183.73:3000/](http://13.236.183.73:3000/)
 
 > Note: the server may be powered off from time to time. After a restart, the public IPv4 address may change. The link above is the last confirmed working address.
 
